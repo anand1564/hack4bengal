@@ -41,6 +41,10 @@ const projectSubmissionSchema = new Schema({
     type: Date,
     default: Date.now
   },
+  organizerAddress:{
+    type: String,
+    required: true
+  },
   feedback: [{
     judgeId: {
       type: Schema.Types.ObjectId,
@@ -160,20 +164,6 @@ const hackathonSchema = new Schema({
     description: String,
     weight: Number
   }],
-  status: {
-    type: String,
-    enum: ['draft', 'published', 'registration_open', 'registration_closed', 'submission_open', 'judging', 'completed'],
-    default: 'draft'
-  },
-  visibility: {
-    type: String,
-    enum: ['public', 'private', 'invite_only'],
-    default: 'public'
-  },
-  featured: {
-    type: Boolean,
-    default: false
-  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Hackathon', hackathonSchema);

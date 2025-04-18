@@ -1,10 +1,95 @@
 'use client';
 
 import Image from "next/image";
-
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check if user is logged in - prioritize sessionStorage over localStorage
+    const sessionToken = sessionStorage.getItem('token');
+    const localToken = localStorage.getItem('token');
+    const token = sessionToken || localToken;
+
+    if (token) {
+      // If we have a token in localStorage but not in sessionStorage,
+      // verify if it belongs to the current session
+      if (!sessionToken && localToken) {
+        const currentAddress = sessionStorage.getItem('userAddress');
+        // Fetch user data to verify the token
+        verifyAndFetchUserData(localToken, currentAddress);
+      } else {
+        setIsLoggedIn(true);
+        fetchUserData(token);
+      }
+    }
+  }, []);
+
+  const verifyAndFetchUserData = async (token, currentAddress) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/auth/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // If the addresses match or there's no current address, use this token
+        if (!currentAddress || data.address === currentAddress) {
+          sessionStorage.setItem('token', token);
+          sessionStorage.setItem('userAddress', data.address);
+          setIsLoggedIn(true);
+          setUserData(data);
+        } else {
+          // If addresses don't match, clear localStorage
+          localStorage.removeItem('token');
+        }
+      } else {
+        // If token is invalid, clear it
+        localStorage.removeItem('token');
+      }
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      localStorage.removeItem('token');
+    }
+  };
+
+  const fetchUserData = async (token) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/auth/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUserData(data);
+      } else {
+        // If token is invalid, log out
+        handleLogout();
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      handleLogout();
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('userAddress');
+    setIsLoggedIn(false);
+    setUserData(null);
+    router.push('/');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       {/* Navigation */}
@@ -15,15 +100,34 @@ export default function Home() {
               <span className="text-2xl font-bold text-indigo-600">EventChain</span>
             </div>
             <div className="flex items-center space-x-4">
-              <Link href="/auth" className="text-gray-600 hover:text-indigo-600 transition-colors">
-                Sign In
-              </Link>
-              <Link 
-                href="/auth" 
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                Get Started
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <span className="text-gray-600">
+                    Welcome, {userData?.name || 'User'}
+                  </span>
+                  <Link href="/home" className="text-gray-600 hover:text-indigo-600 transition-colors">
+                    Dashboard
+                  </Link>
+                  <button 
+                    onClick={handleLogout}
+                    className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/auth" className="text-gray-600 hover:text-indigo-600 transition-colors">
+                    Sign In
+                  </Link>
+                  <Link 
+                    href="/auth" 
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -59,6 +163,17 @@ export default function Home() {
                     >
                       Learn More
                     </a>
+                  </div>
+                  <div className="mt-3 sm:mt-0 sm:ml-3">
+                    <button
+                      onClick={() => window.open('/chat', '_blank')}
+                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 md:py-4 md:text-lg md:px-10"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      Join Chat
+                    </button>
                   </div>
                 </div>
               </div>
