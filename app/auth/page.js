@@ -19,6 +19,7 @@ export default function AuthPage() {
   const [passwordError, setPasswordError] = useState('');
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [useManualEntry, setUseManualEntry] = useState(false);
 
   useEffect(() => {
     if (typeof window.ethereum !== 'undefined') {
@@ -45,8 +46,8 @@ export default function AuthPage() {
     e.preventDefault();
     setApiError('');
 
-    if (!isConnected) {
-      alert('Please connect your MetaMask wallet first');
+    if (!useManualEntry && !isConnected) {
+      alert('Please connect your MetaMask wallet or switch to manual entry');
       return;
     }
     if (!isLogin && formData.password !== formData.confirmPassword) {
@@ -78,10 +79,10 @@ export default function AuthPage() {
         throw new Error(data.message || 'Something went wrong');
       }
 
-      // Store the token in localStorage
       localStorage.setItem('token', data.token);
+      sessionStorage.setItem('token', data.token);
+      sessionStorage.setItem('userAddress', formData.publicAddress);
 
-      // Redirect to home page or dashboard
       router.push('/');
     } catch (error) {
       setApiError(error.message);
@@ -99,6 +100,14 @@ export default function AuthPage() {
     });
     if (name === 'confirmPassword' || name === 'password') {
       setPasswordError('');
+    }
+  };
+
+  const toggleEntryMethod = () => {
+    setUseManualEntry(!useManualEntry);
+    if (!useManualEntry) {
+      setIsConnected(false);
+      setFormData(prev => ({ ...prev, publicAddress: '' }));
     }
   };
 
@@ -166,22 +175,31 @@ export default function AuthPage() {
             )}
 
             <div>
-              <label htmlFor="publicAddress" className="block text-sm font-medium text-gray-700 mb-1">
-                MetaMask Address
-              </label>
+              <div className="flex justify-between items-center mb-1">
+                <label htmlFor="publicAddress" className="block text-sm font-medium text-gray-700">
+                  MetaMask Address
+                </label>
+                <button
+                  type="button"
+                  onClick={toggleEntryMethod}
+                  className="text-sm text-indigo-600 hover:text-indigo-500"
+                >
+                  {useManualEntry ? 'Use MetaMask' : 'Enter Manually'}
+                </button>
+              </div>
               <div className="flex space-x-2">
                 <input
                   id="publicAddress"
                   name="publicAddress"
                   type="text"
                   required
-                  readOnly
+                  readOnly={!useManualEntry}
                   className="flex-1 appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-150 ease-in-out text-black"
-                  placeholder={isConnected ? formData.publicAddress : "Connect MetaMask to get your address"}
+                  placeholder={useManualEntry ? "Enter your MetaMask address" : "Connect MetaMask to get your address"}
                   value={formData.publicAddress}
                   onChange={handleChange}
                 />
-                {!isConnected && isMetaMaskInstalled && (
+                {!useManualEntry && !isConnected && isMetaMaskInstalled && (
                   <button
                     type="button"
                     onClick={connectMetaMask}

@@ -1,5 +1,3 @@
-
-
 const express = require('express');
 
 const router = express.Router();
@@ -10,6 +8,7 @@ const bcrypt = require('bcrypt');
 
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
+const userAuthMiddleware = require('../middlewares/userMiddleware');
 dotenv.config();
 
 router.post('/signup',async(req,res)=>{
@@ -70,5 +69,19 @@ router.post('/signin', async (req, res) => {
        res.status(500).json({ message: "Internal server error" });
      }
    });
+
+// Add new endpoint to get user data
+router.get('/user', userAuthMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 module.exports = router;
