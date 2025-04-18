@@ -20,10 +20,12 @@ mongoose
 const authRouter = require('./routes/auth'); 
 const eventRouter = require('./routes/createEvent');
 const transactionRouter = require('./routes/transactions');
+const hackathonRouter = require('./routes/hackathon');
 
 app.use('/api/events',eventRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/transactions', transactionRouter);
+app.use('/api/hackathon', hackathonRouter);
 
 app.listen(PORT,()=>{
      console.log("Server is running on port 3000");
