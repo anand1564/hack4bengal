@@ -69,6 +69,7 @@ const EventsPage = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hackathons, setHackathons] = useState([]);
   const router = useRouter(); 
 
   useEffect(() => {
@@ -94,6 +95,25 @@ const EventsPage = () => {
  
      fetchEvents();
    }, []);
+   useEffect(()=>{
+    const fetchHackathons = async () =>{
+      try{
+        const response = await fetch('http://localhost:8000/api/hackathon',{
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if(!response.ok) setError('Failed to fetch hackathons');
+        const data = await response.json();
+        setHackathons(data);
+    }catch(err){
+      console.error('Error fetching hackathons:', err);
+      setError('Failed to fetch hackathons');
+    }
+   }
+  fetchHackathons()
+},[]);
 
   const handleCreateEvent = () => {
     router.push('/createEvent');
@@ -190,7 +210,7 @@ const EventsPage = () => {
             <div className="w-full md:w-40 flex items-end">
               <button 
                 className="bg-gray-100 py-2 px-6 rounded-md hover:bg-indigo-300 transition duration-200 text-indigo-600"
-              >
+              onClick={(e)=>router.push('/yourEvents')}>
                 Your Events
               </button>
             </div>
@@ -285,10 +305,9 @@ const EventsPage = () => {
           </div>
           
           {/* Display hackathons or a CTA if none */}
-          {events.filter(e => e.eventType === 'HACKATHON').length > 0 ? (
+          {hackathons.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {events
-                .filter(event => event.eventType === 'HACKATHON')
+              {hackathons
                 .map(event => (
                   <div 
                     key={event.eventId} 
@@ -311,7 +330,7 @@ const EventsPage = () => {
                         <div className="text-sm text-gray-600">
                           {event.availableTickets || (event.capacity - event.ticketsSold)} spots left
                         </div>
-                        <button className="bg-indigo-600 text-white px-3 py-1 text-sm rounded hover:bg-indigo-700 transition duration-200">
+                        <button className="bg-indigo-600 text-white px-3 py-1 text-sm rounded hover:bg-indigo-700 transition duration-200" onClick={(e)=>router.push(`hackathons/${event._id}`)}>
                           Register
                         </button>
                       </div>

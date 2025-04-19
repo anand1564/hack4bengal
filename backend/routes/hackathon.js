@@ -221,53 +221,111 @@ router.get('/:id', async (req, res) => {
 
 
 router.post('/register/:id', async (req, res) => {
-  const { teamName, members } = req.body;
-  
-  if (!teamName || !members || !Array.isArray(members) || members.length === 0) {
-    return res.status(400).json({ message: 'Invalid team information' });
-  }
-
-  try {
-    const hackathon = await Hackathon.findById(req.params.id);
-    if (!hackathon) {
-      return res.status(404).json({ message: 'Hackathon not found' });
+    const {id} = req.params;
+    const {name,address,githubLink,xLink,linkedinLink} = req.body;  
+    if (!name || !address || !githubLink) {
+        return res.status(400).json({ message: 'Missing required fields' });
     }
-
-    // Register team on blockchain
-    const eventId = hackathon.blockchainEventId;
-    console.log(`Registering team "${teamName}" for event ${eventId}`);
-    
-    const tx = await contract.registerTeam(
-      eventId,
-      teamName,
-      members
-    );
-    
-    console.log(`Team registration transaction sent: ${tx.hash}`);
-    const receipt = await tx.wait();
-    console.log(`Team registered in block ${receipt.blockNumber}`);
-    
-    // Update hackathon document in MongoDB
-    hackathon.teams.push({
-      name: teamName,
-      members: members.map(address => ({ walletAddress: address })),
-      registeredAt: new Date()
-    });
-    
-    await hackathon.save();
-    
-    res.status(200).json({ 
-      message: 'Team registered successfully',
-      team: {
-        name: teamName,
-        members
-      },
-      transactionHash: receipt.transactionHash
-    });
-  } catch (error) {
-    console.error("Error registering team:", error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
+    try{
+      const hackathon = await Hackathon.findById(id);
+      if(!hackathon) {
+        return res.status(404).json({ message: 'Hackathon not found' });
+      }
+      const newTeam = {
+        name,
+        address,
+        githubLink,
+        xLink,
+        linkedinLink
+      }
+      hackathon.teams.push(newTeam);
+      hackathon.capacity-=1;
+      await hackathon.save();
+      res.status(200).json({ message: 'Team registered successfully', team: newTeam });
+    }catch(err){
+      console.error("Error registering team:", err);
+      res.status(500).json({ message: 'Server error', error: err.message });
+    }
 });
 
+
+
+router.post('/submitProject/:teamId/:hackathonId', async (req, res) => {
+  const {hackathonId,teamId} = req.params;
+  const {projectName, description, demoLink, githubLink} = req.body;
+  if (!projectName || !description || !demoLink || !githubLink) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+  try{
+    const hackathon = await Hackathon.findById(hackathonId);
+    if(!hackathon) {
+      return res.status(404).json({ message: 'Hackathon not found' });
+    }
+    const team = hackathon.teams.find(t => t._id.toString() === teamId);
+    const newProject = {
+      teamId,
+      projectName,
+      description,
+      demoLink,
+      githubLink
+    }
+    hackathon.projects.push(newProject);
+    await hackathon.save();
+    res.status(200).json({ message: 'Project submitted successfully', project: newProject });
+  }catch(err){
+    console.error("Error submitting project:", err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+})
+router.get('/getTeams/:id', async (req, res) => {
+  const {id} = req.params;
+  try{
+    const hackathon = await Hackathon.findById(id);
+    if(!hackathon) {
+      return res.status(404).json({ message: 'Hackathon not found' });
+    }
+    const teams = hackathon.teams;
+    res.status(200).json({ message: 'Teams fetched successfully', teams });
+  }catch(err){
+    console.error("Error fetching teams:", err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+})
+router.post('/award/:hackathonId/:teamId', async (req, res) => {
+  const {hackathonId,teamId} = req.params;
+  const {prizeAmount} = req.body;
+  if (!prizeAmount) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+  try{
+    const hackathon = await Hackathon.findById(hackathonId);
+    if(!hackathon) {
+      return res.status(404).json({ message: 'Hackathon not found' });
+    }
+    const team = hackathon.teams.find(t => t._id.toString() === teamId);
+    if(!team){
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    team.isSubmitted=true;
+    await hackathon.save();
+    res.status(200).json({ message: 'Prize awarded successfully', prizeAmount });
+  }catch(err){
+    console.error("Error awarding prize:", err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+})
+router.get('/:hackathonId/submissions',async(req,res)=>{
+  const {hackathonId} = req.params;
+  try{
+    const hackathon = await Hackathon.findById(hackathonId);
+    if(!hackathon) {
+      return res.status(404).json({ message: 'Hackathon not found' });
+    }
+    const submissions = hackathon.projects;
+    res.status(200).json({ message: 'Submissions fetched successfully', submissions });
+  }catch(err){
+    console.error("Error fetching submissions:", err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+})
 module.exports = router;

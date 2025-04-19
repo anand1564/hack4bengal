@@ -20,70 +20,55 @@ const teamSchema = new Schema({
     type: String,
     required: true
   },
-  members: [teamMemberSchema],
-  registeredAt: {
-    type: Date,
-    default: Date.now
+  address:{
+    type: String,
+    required: true
   },
-  projectId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Project'
+  githubLink:{
+    type: String,
+    trim: true,
+    required: true
+  },
+  xLink:{
+    type: String,
+    trim: true,
+  },
+  linkedinLink:{
+    type: String,
+    trim: true,
+  },
+  isSubmitted:{
+    type: Boolean,
+    default: false
   }
 });
 
 // Project submission schema
 const projectSubmissionSchema = new Schema({
-  title: {
+  teamId:{
+    type: Schema.Types.ObjectId,
+  },
+  projectName: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   description: {
     type: String,
     required: true
   },
-  repositoryUrl: {
+  demoLink: {
     type: String,
     trim: true
   },
-  demoUrl: {
+  githubLink: {
     type: String,
     trim: true
-  },
-  technologies: [{
-    type: String,
-    trim: true
-  }],
-  teamId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Team'
   },
   submissionDate: {
     type: Date,
     default: Date.now
-  },
-  feedback: [{
-    judgeId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    rating: {
-      type: Number,
-      min: 1,
-      max: 10
-    },
-    comment: String,
-    submittedAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  status: {
-    type: String,
-    enum: ['submitted', 'under_review', 'evaluated', 'winner', 'finalist'],
-    default: 'submitted'
   }
-});
+})
 
 // Prize distribution schema
 const prizeDistributionSchema = new Schema({
@@ -190,19 +175,6 @@ const hackathonSchema = new Schema({
   },
   teams: [teamSchema],
   judges: [judgeSchema],
-  participants: [{
-    walletAddress: {
-      type: String,
-    },
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    registeredAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
   Rules:[{
     type:String
   }],

@@ -3,10 +3,54 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Calendar, Clock, Trophy, Users, FileCode, Award, CheckCircle, BookOpen, Link, ChevronRight } from 'lucide-react';
 import { set } from 'mongoose';
+import useAuth from '../../hooks/user';
 
 const HackathonCard=({ hackathon }) =>{
+  const {user} = useAuth();
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmissionOpen, setIsSubmissionOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const pathname = usePathname();
+  const [registrationData,setRegistrationData] = useState({
+    name: "",
+    address: "",
+    linkedinLink:"",
+    githubLink:"",
+    xLink:""
+  })
+  const handleRegistration =async (e)=>{
+    e.preventDefault();
+    const {name,address,linkedinLink,githubLink,xLink} = registrationData;
+    try{
+      const segments = pathname.split("/").filter(Boolean); // removes empty strings
+      const hackathonId = segments[1];
+      const response = await fetch(`http://localhost:8000/api/hackathon/register/${hackathonId}`,{
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(registrationData)
+      })
+      if(!response.ok){
+        throw new Error("Failed to register for hackathon");
+      }
+      const data = await response.json();
+      console.log(data);
+      setIsModalOpen(false);
+
+    }catch(err){
+      console.error(err);
+    }
+  }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setRegistrationData((prevData) => ({
+      ...prevData,
+      [name]: value, // Dynamically update the field based on the input's name
+    }));
+  };
   // Format dates
   const formatDate = (dateString) => {
     const options = { month: 'short', day: 'numeric', year: 'numeric' };
@@ -358,7 +402,87 @@ const HackathonCard=({ hackathon }) =>{
   </div>
 )}
         </div>
-        
+        {isModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded shadow-md w-96 relative">
+      <button 
+        className="absolute top-2 right-2 text-gray-500 hover:text-black"
+        onClick={() => setIsModalOpen(false)}
+      >
+        ✕
+      </button>
+
+      <h2 className="text-xl font-semibold mb-4">Register for Hackathon</h2>
+
+      <form onSubmit={handleRegistration}>
+      <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-2xl font-bold text-indigo-800 mb-4">Basic Information</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Enter your name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={registrationData.name}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Enter your wallet address</label>
+                <textarea
+                  name="address"
+                  value={registrationData.address}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  rows={2}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Enter a link to your github</label>
+                <textarea
+                  name="githubLink"
+                  value={registrationData.githubLink}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  rows={2}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Enter a link to your Linkedin Page</label>
+                <textarea
+                  name="linkedinLink"
+                  value={registrationData.linkedinLink}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  rows={2}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Enter your twitter link</label>
+                <textarea
+                  name="xLink"
+                  value={registrationData.xLink}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  rows={2}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+        <button type="submit" className="mt-4 w-full bg-blue-600 text-white py-2 rounded">
+          Submit
+        </button>
+      </form>
+    </div>
+  </div>
+)}
+
         {/* Right Sidebar (Registration) */}
         <div className="w-full md:w-1/3 p-6 md:p-6 md:pt-16 bg-gray-50 border-t md:border-t-0 md:border-l border-gray-200">
           <div className="sticky top-6">
@@ -392,10 +516,24 @@ const HackathonCard=({ hackathon }) =>{
               </div>
               
               {/* Register Button */}
-              <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-md text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                Register Now
-              </button>
-              
+              {isRegistered ? (
+  isSubmissionOpen ? (
+    <button className="bg-green-600 text-white px-4 py-2 rounded">
+      Submit Project
+    </button>
+  ) : (
+    <button className="bg-gray-400 text-white px-4 py-2 rounded cursor-not-allowed" disabled>
+      Already Registered
+    </button>
+  )
+) : (
+  <button
+    className="bg-blue-600 text-white px-4 py-2 rounded"
+    onClick={() => setIsModalOpen(true)}
+  >
+    Register Now
+  </button>
+)}  
               <p className="text-xs text-center text-gray-500 mt-3">
                 By registering, you agree to the hackathon rules and terms.
               </p>
