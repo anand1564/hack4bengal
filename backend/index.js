@@ -5,36 +5,36 @@ const PORT = 8000;
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
-  }
-});
-
 const cors = require('cors');
 const dotenv = require('dotenv');
-app.use(cors());
-app.use(express.json());
-const MONGO_URI = "mongodb+srv://admin:5w4-x9h9jJ2t%408A@cluster0.0blyw2r.mongodb.net/hack4bengal?retryWrites=true&w=majority";
-
-const Message = require('./models/Message');
 
 dotenv.config();
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+
+// Replace with your actual Mongo URI or keep using dotenv
+const MONGO_URI = process.env.MONGO_URI || "";
+
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.error("MongoDB connection error:", err));
 
+// Routes
 const authRouter = require('./routes/auth'); 
 const eventRouter = require('./routes/createEvent');
 const transactionRouter = require('./routes/transactions');
+const hackathonRouter = require('./routes/hackathon');
+const Message = require('./models/Message');
 
-app.use('/api/events',eventRouter);
+app.use('/api/events', eventRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/transactions', transactionRouter);
+app.use('/api/hackathon', hackathonRouter);
 
-// Add route to get chat history
+// Route to get chat history
 app.get('/api/messages', async (req, res) => {
   try {
     const messages = await Message.find().sort({ timestamp: 1 }).limit(100);
@@ -44,32 +44,35 @@ app.get('/api/messages', async (req, res) => {
   }
 });
 
-// Store connected users with address as key
+// SOCKET.IO SETUP
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Store connected users
 const connectedUsers = new Map();
 const addressToSocketId = new Map();
 
 io.on('connection', (socket) => {
   console.log('A user connected');
 
-  // Handle user joining with their data
   socket.on('join', async (userData) => {
-    // If this address is already connected, handle reconnection
     const existingSocketId = addressToSocketId.get(userData.address);
     if (existingSocketId) {
-      // Remove old socket connection
       connectedUsers.delete(existingSocketId);
       addressToSocketId.delete(userData.address);
     }
 
-    // Add new connection
     connectedUsers.set(socket.id, {
       id: socket.id,
       name: userData.name,
       address: userData.address
     });
     addressToSocketId.set(userData.address, socket.id);
-    
-    // Only emit join message if this is a new user
+
     if (!existingSocketId) {
       const joinMessage = {
         senderId: socket.id,
@@ -77,9 +80,8 @@ io.on('connection', (socket) => {
         text: `${userData.name} has joined the chat`,
         type: 'system'
       };
-      
-      // Save join message
       await new Message(joinMessage).save();
+
       io.emit('userJoined', {
         id: socket.id,
         name: userData.name,
@@ -87,11 +89,9 @@ io.on('connection', (socket) => {
       });
     }
 
-    // Send the current list of connected users to all clients
     io.emit('userList', Array.from(connectedUsers.values()));
   });
 
-  // Handle chat messages
   socket.on('chatMessage', async (message) => {
     const user = connectedUsers.get(socket.id);
     if (user) {
@@ -103,7 +103,6 @@ io.on('connection', (socket) => {
         timestamp: new Date()
       };
 
-      // Save message to database
       try {
         await new Message(messageData).save();
         io.emit('message', {
@@ -118,16 +117,13 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle disconnection
   socket.on('disconnect', async () => {
     const user = connectedUsers.get(socket.id);
     if (user) {
-      // Only remove user completely if no other socket is connected with same address
       const currentSocketForAddress = addressToSocketId.get(user.address);
       if (currentSocketForAddress === socket.id) {
         addressToSocketId.delete(user.address);
-        
-        // Save leave message
+
         const leaveMessage = {
           senderId: socket.id,
           senderName: user.name,
@@ -135,7 +131,7 @@ io.on('connection', (socket) => {
           type: 'system'
         };
         await new Message(leaveMessage).save();
-        
+
         io.emit('userLeft', {
           id: socket.id,
           name: user.name,
@@ -148,6 +144,7 @@ io.on('connection', (socket) => {
   });
 });
 
+// Start HTTP server
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

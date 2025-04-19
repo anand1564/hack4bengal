@@ -13,7 +13,7 @@ const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
 const signer = new ethers.Wallet("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d", provider);
 
 // Replace with deployed contract address
-const contractAddress = "0x364837Bfe8D9d36150801A71E187E5b96B3ADC7C";
+const contractAddress = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
 const contract = new ethers.Contract(contractAddress, contractAbi.abi, signer);
 
 router.post("/:eventId/buy", async (req, res) => {
@@ -102,5 +102,19 @@ router.post("/:eventId/buy", async (req, res) => {
     res.status(500).json({ error: "Failed to purchase ticket" });
   }
 });
+
+router.get("/:eventId/tickets",async(req,res)=>{
+  const {eventId} = req.params;
+  try{
+    const tickets = await Ticket.find({eventId});
+    if(!tickets || tickets.length === 0){
+      return res.status(404).json({error:"No tickets found"});
+    }
+    res.status(200).json({tickets});
+  }catch(err){
+    console.error("Error fetching tickets:", err);
+    res.status(500).json({error:"Failed to fetch tickets"});
+  }
+})
 
 module.exports = router;

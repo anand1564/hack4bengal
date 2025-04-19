@@ -5,6 +5,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const User = require('../models/user');
 const bcrypt = require('bcrypt');
+const userAuthMiddleware = require('../middlewares/userMiddleware');
 
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
@@ -70,18 +71,17 @@ router.post('/signin', async (req, res) => {
      }
    });
 
-// Add new endpoint to get user data
-router.get('/user', userAuthMiddleware, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+   router.get('/user', userAuthMiddleware, async (req, res) => {
+    try {
+      const user = await User.findById(req.user.id).select('-password');
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server error' });
     }
-    res.json(user);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+  });
 
 module.exports = router;

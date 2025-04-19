@@ -9,7 +9,6 @@ const contractAddress = "0x364837Bfe8D9d36150801A71E187E5b96B3ADC7C";
 
 export default function CreateEvent() {
   const router = useRouter();
-  const [walletAddress, setWalletAddress] = useState('');
   const [formData, setFormData] = useState({
     eventName: "",
     description: "",
@@ -19,61 +18,8 @@ export default function CreateEvent() {
     startDate: "",
     endDate: "",
   });
+  const [coverImage, setCoverImage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Check wallet connection on component mount
-  useEffect(() => {
-    checkWalletConnection();
-  }, []);
-
-  // Handle wallet connection changes
-  useEffect(() => {
-    if (typeof window.ethereum !== "undefined") {
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('disconnect', () => setWalletAddress(''));
-
-      return () => {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        window.ethereum.removeListener('disconnect', () => setWalletAddress(''));
-      };
-    }
-  }, []);
-
-  const handleAccountsChanged = (accounts) => {
-    if (accounts.length === 0) {
-      setWalletAddress('');
-    } else {
-      setWalletAddress(accounts[0]);
-    }
-  };
-
-  const checkWalletConnection = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-          setWalletAddress(accounts[0]);
-        }
-      } catch (error) {
-        console.error('Error checking wallet connection:', error);
-      }
-    }
-  };
-
-  const connectWallet = async () => {
-    if (typeof window.ethereum === "undefined") {
-      alert("Please install MetaMask!");
-      return;
-    }
-
-    try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      setWalletAddress(accounts[0]);
-    } catch (error) {
-      console.error('Error connecting wallet:', error);
-      alert('Failed to connect wallet. Please try again.');
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -81,6 +27,12 @@ export default function CreateEvent() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setCoverImage(e.target.files[0]);
+    }
   };
 
   const getContract = async () => {
@@ -118,23 +70,38 @@ export default function CreateEvent() {
       await tx.wait();
 
       const organizerAddress = await signer.getAddress();
+      
+      // Create FormData object correctly
+      const form = new FormData();
+      form.append("name", formData.eventName);
+      form.append("description", formData.description);
+      form.append("eventType", "LIVE_SESSION");
+      form.append("price", formData.ticketPrice);
+      form.append("capacity", formData.totalTickets);
+      form.append("startDate", formData.startDate);
+      form.append("endDate", formData.endDate);
+      form.append("organizerAddress", organizerAddress);
+      
+      // Make sure we have a file before appending it
+      if (coverImage) {
+        form.append("coverImage", coverImage);
+      }
+
+      const token = localStorage.getItem("token");
+      if(!token){
+        alert("Please login to create an event");
+        return;
+      }
+      
+      console.log("Form data:", Object.fromEntries(form));
+      console.log("Token: ", token);
 
       const response = await fetch("http://localhost:8000/api/events/createEvent", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: formData.eventName,
-          description: formData.description,
-          eventType: "LIVE_SESSION",
-          price: formData.ticketPrice,
-          capacity: formData.totalTickets,
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          organizerAddress,
-        }),
+        body: form
       });
 
       if (!response.ok) {
@@ -153,54 +120,6 @@ export default function CreateEvent() {
     }
   };
 
-  // Format wallet address for display
-  const formatAddress = (address) => {
-    if (!address) return '';
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-  };
-
-  if (!walletAddress) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="bg-blue-600 p-4">
-            <h1 className="text-white text-2xl font-bold text-center">
-              Create an Event
-            </h1>
-          </div>
-          <div className="p-6 text-center">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
-              />
-            </svg>
-            <h2 className="mt-4 text-lg font-medium text-gray-900">Connect Your Wallet</h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Please connect your wallet to create an event. This is required to interact with the blockchain.
-            </p>
-            <div className="mt-6">
-              <button
-                onClick={connectWallet}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Connect Wallet
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-gray-50 min-h-screen py-8 px-4">
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden">
@@ -208,16 +127,6 @@ export default function CreateEvent() {
           <h1 className="text-white text-2xl font-bold text-center">
             Create an Event
           </h1>
-        </div>
-
-        {/* Wallet info */}
-        <div className="bg-gray-50 px-4 py-2 border-b">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Connected Wallet:</span>
-            <span className="text-sm font-mono bg-gray-100 text-black px-3 py-1 rounded-md">
-              {formatAddress(walletAddress)}
-            </span>
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6 text-black">
@@ -335,6 +244,22 @@ export default function CreateEvent() {
                 name="endDate"
                 value={formData.endDate}
                 onChange={handleChange}
+                required
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+              />
+            </div>
+            
+            {/* Cover Image */}
+            <div>
+              <label htmlFor="coverImage" className="block text-sm font-medium text-gray-700">
+                Add a cover image
+              </label>
+              <input
+                type="file"
+                id="coverImage"
+                name="coverImage"
+                accept="image/*"
+                onChange={handleFileChange}
                 required
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
               />
