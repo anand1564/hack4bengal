@@ -18,6 +18,10 @@ const messageSchema = new mongoose.Schema({
     enum: ['message', 'system'],
     default: 'message'
   },
+  eventId: {
+    type: String,
+    required: true
+  },
   timestamp: {
     type: Date,
     default: Date.now,

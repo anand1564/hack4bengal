@@ -34,10 +34,12 @@ app.use('/api/auth', authRouter);
 app.use('/api/transactions', transactionRouter);
 app.use('/api/hackathon', hackathonRouter);
 
-// Route to get chat history
-app.get('/api/messages', async (req, res) => {
+// Route to get chat history for a specific event
+app.get('/api/messages/:eventId', async (req, res) => {
   try {
-    const messages = await Message.find().sort({ timestamp: 1 }).limit(100);
+    const messages = await Message.find({ eventId: req.params.eventId })
+      .sort({ timestamp: 1 })
+      .limit(100);
     res.json(messages);
   } catch (error) {
     res.status(500).json({ message: "Error fetching messages" });
@@ -52,93 +54,134 @@ const io = new Server(server, {
   }
 });
 
-// Store connected users
+// Store connected users and their rooms
 const connectedUsers = new Map();
 const addressToSocketId = new Map();
+const userRooms = new Map(); // Track which rooms each user is in
 
 io.on('connection', (socket) => {
   console.log('A user connected');
 
   socket.on('join', async (userData) => {
+    // Clear previous connection if exists
     const existingSocketId = addressToSocketId.get(userData.address);
     if (existingSocketId) {
+      const oldSocket = io.sockets.sockets.get(existingSocketId);
+      if (oldSocket) {
+        // Leave all rooms
+        oldSocket.rooms.forEach(room => oldSocket.leave(room));
+      }
       connectedUsers.delete(existingSocketId);
       addressToSocketId.delete(userData.address);
     }
 
+    // Set up new connection
     connectedUsers.set(socket.id, {
       id: socket.id,
       name: userData.name,
       address: userData.address
     });
     addressToSocketId.set(userData.address, socket.id);
-
-    if (!existingSocketId) {
-      const joinMessage = {
-        senderId: socket.id,
-        senderName: userData.name,
-        text: `${userData.name} has joined the chat`,
-        type: 'system'
-      };
-      await new Message(joinMessage).save();
-
-      io.emit('userJoined', {
-        id: socket.id,
-        name: userData.name,
-        message: joinMessage.text
-      });
-    }
+    userRooms.set(socket.id, new Set());
 
     io.emit('userList', Array.from(connectedUsers.values()));
   });
 
-  socket.on('chatMessage', async (message) => {
+  socket.on('joinRoom', async (data) => {
+    const { eventId, userData } = data;
+    const userRoomSet = userRooms.get(socket.id);
+    
+    // Only join if not already in room
+    if (userRoomSet && !userRoomSet.has(eventId)) {
+      socket.join(eventId);
+      userRoomSet.add(eventId);
+      
+      const joinMessage = {
+        id: socket.id,
+        name: userData.name,
+        text: `${userData.name} has joined the event chat`,
+        type: 'system',
+        timestamp: new Date()
+      };
+
+      // Save to database
+      await new Message({
+        senderId: socket.id,
+        senderName: userData.name,
+        text: joinMessage.text,
+        type: 'system',
+        eventId: eventId,
+        timestamp: joinMessage.timestamp
+      }).save();
+
+      // Emit only to the specific room
+      socket.to(eventId).emit('message', joinMessage);
+    }
+  });
+
+  socket.on('chatMessage', async (data) => {
+    const { message, eventId } = data;
     const user = connectedUsers.get(socket.id);
-    if (user) {
+    const userRoomSet = userRooms.get(socket.id);
+
+    if (user && userRoomSet?.has(eventId)) {
       const messageData = {
+        id: socket.id,
+        name: user.name,
+        text: message,
+        timestamp: new Date()
+      };
+
+      // Save to database
+      await new Message({
         senderId: socket.id,
         senderName: user.name,
         text: message,
         type: 'message',
-        timestamp: new Date()
-      };
+        eventId: eventId,
+        timestamp: messageData.timestamp
+      }).save();
 
-      try {
-        await new Message(messageData).save();
-        io.emit('message', {
-          id: socket.id,
-          name: user.name,
-          text: message,
-          timestamp: messageData.timestamp
-        });
-      } catch (error) {
-        console.error('Error saving message:', error);
-      }
+      // Emit to room (including sender)
+      io.in(eventId).emit('message', messageData);
     }
   });
 
   socket.on('disconnect', async () => {
     const user = connectedUsers.get(socket.id);
-    if (user) {
-      const currentSocketForAddress = addressToSocketId.get(user.address);
-      if (currentSocketForAddress === socket.id) {
-        addressToSocketId.delete(user.address);
+    const userRoomSet = userRooms.get(socket.id);
 
+    if (user && userRoomSet) {
+      // Handle leave messages for each room
+      for (const eventId of userRoomSet) {
         const leaveMessage = {
-          senderId: socket.id,
-          senderName: user.name,
-          text: `${user.name} has left the chat`,
-          type: 'system'
-        };
-        await new Message(leaveMessage).save();
-
-        io.emit('userLeft', {
           id: socket.id,
           name: user.name,
-          message: leaveMessage.text
-        });
+          text: `${user.name} has left the chat`,
+          type: 'system',
+          timestamp: new Date()
+        };
+
+        // Save to database
+        await new Message({
+          senderId: socket.id,
+          senderName: user.name,
+          text: leaveMessage.text,
+          type: 'system',
+          eventId: eventId,
+          timestamp: leaveMessage.timestamp
+        }).save();
+
+        // Emit to room
+        io.in(eventId).emit('message', leaveMessage);
+      }
+
+      // Cleanup
+      if (addressToSocketId.get(user.address) === socket.id) {
+        addressToSocketId.delete(user.address);
       }
       connectedUsers.delete(socket.id);
+      userRooms.delete(socket.id);
       io.emit('userList', Array.from(connectedUsers.values()));
     }
   });

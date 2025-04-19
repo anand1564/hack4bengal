@@ -1,3 +1,5 @@
+
+
 const express = require('express');
 
 const router = express.Router();
@@ -9,7 +11,6 @@ const userAuthMiddleware = require('../middlewares/userMiddleware');
 
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
-const userAuthMiddleware = require('../middlewares/userMiddleware');
 dotenv.config();
 
 router.post('/signup',async(req,res)=>{
