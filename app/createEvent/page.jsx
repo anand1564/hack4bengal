@@ -5,7 +5,7 @@ import contractAbi from "../abis/NFTEventTicketing";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-const contractAddress = "0x364837Bfe8D9d36150801A71E187E5b96B3ADC7C";
+const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
 export default function CreateEvent() {
   const router = useRouter();

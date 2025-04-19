@@ -43,6 +43,9 @@ function fundPrizePool(uint256 eventId) external payable {
 
     prizePools[eventId] += msg.value;
 }
+function getEventIdCounter() external view returns (uint256) {
+    return _eventIdCounter;
+}
 //Function to withdraw the prize pool for the hackathon
 function withdrawPrizePool(uint256 eventId) external {
     require(events[eventId].eventType == EventType.HACKATHON, "Only for hackathons");

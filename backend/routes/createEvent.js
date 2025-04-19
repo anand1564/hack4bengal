@@ -59,9 +59,10 @@ router.post(
         organizerAddress,
         image: coverImageURL,
       });
-
+      const user = await User.findOne({ address: organizerAddress });
       await event.save();
-
+      user.eventsCreated.push(event._id);
+      await user.save();
       res.status(201).json({ message: 'Event created successfully', event });
     } catch (err) {
       console.error(err);
@@ -94,5 +95,20 @@ router.get('/getEvents/:eventId', userMiddleware, async (req, res) => {
        res.status(500).json({ message: "Error fetching event" });
      }
 });
-
+router.get('/getEvents/organizer/:organizerAddress', async (req, res) => {
+      try {
+        const { organizerAddress } = req.params;
+    
+        const events = await Event.find({ organizerAddress: organizerAddress });
+    
+        if (!events || events.length === 0) {
+          return res.status(404).json({ message: "No events found for this organizer" });
+        }
+    
+        res.status(200).json(events);
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Error fetching events" });
+      }
+})
 module.exports = router;

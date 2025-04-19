@@ -1,8 +1,37 @@
-// Hackathon Schema
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-// Project Submission Schema
+// Team member schema
+const teamMemberSchema = new Schema({
+  walletAddress: {
+    type: String,
+    required: true
+  },
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  role: String
+});
+
+// Team schema
+const teamSchema = new Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  members: [teamMemberSchema],
+  registeredAt: {
+    type: Date,
+    default: Date.now
+  },
+  projectId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Project'
+  }
+});
+
+// Project submission schema
 const projectSubmissionSchema = new Schema({
   title: {
     type: String,
@@ -15,7 +44,6 @@ const projectSubmissionSchema = new Schema({
   },
   repositoryUrl: {
     type: String,
-    required: true,
     trim: true
   },
   demoUrl: {
@@ -26,24 +54,13 @@ const projectSubmissionSchema = new Schema({
     type: String,
     trim: true
   }],
-  team: [{
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    role: {
-      type: String,
-      trim: true
-    }
-  }],
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Team'
+  },
   submissionDate: {
     type: Date,
     default: Date.now
-  },
-  organizerAddress:{
-    type: String,
-    required: true
   },
   feedback: [{
     judgeId: {
@@ -66,7 +83,21 @@ const projectSubmissionSchema = new Schema({
     enum: ['submitted', 'under_review', 'evaluated', 'winner', 'finalist'],
     default: 'submitted'
   }
-}, { timestamps: true });
+});
+
+// Prize distribution schema
+const prizeDistributionSchema = new Schema({
+  rank: Number,
+  amount: String,
+  description: String
+});
+
+// Judge schema
+const judgeSchema = new Schema({
+  name: String,
+  description: String,
+  image:String
+});
 
 // Hackathon Schema
 const hackathonSchema = new Schema({
@@ -91,79 +122,107 @@ const hackathonSchema = new Schema({
     type: Date,
     required: true
   },
-  registrationDeadline: {
-    type: Date,
+  eventTimeline:{
+    openingCeremony:{
+      type: Date,
+    },
+    HackingBegins:{
+      type:Date,
+    },
+    SubmissionDeadline:{
+      type:Date,
+    },
+    Results:{
+      type:Date
+    }
+  },
+  organizerAddress: {
+    type: String,
     required: true
   },
-  submissionDeadline: {
-    type: Date,
+  blockchainEventId: {
+    type: String,
+  },
+  capacity: {
+    type: Number,
     required: true
+  },
+  totalPrize:{
+    type: String,
   },
   prizePool: {
     totalAmount: {
-      type: Number,
+      type: String,
       required: true
     },
     currency: {
       type: String,
-      default: 'ETH'
+      default: "ETH"
     },
-    distribution: [{
-      rank: Number,
-      amount: Number,
-      description: String
-    }]
+    firstPrize:{
+      type: String,
+      default: "0"
+    },
+    secondPrize:{
+      type: String,
+      default: "0"
+    },
+    thirdPrize:{
+      type: String,
+      default: "0"
+    },
   },
   web3Integration: {
     contractAddress: {
       type: String,
-      trim: true
     },
     network: {
       type: String,
-      trim: true
+    },
+    eventId: {
+      type: String,
     },
     tokenType: {
       type: String,
-      enum: ['ERC20', 'ERC721', 'ERC1155', 'other'],
-      default: 'ERC20'
+      enum: ['ERC20', 'ERC721', 'ERC1155'],
+      default: 'ERC721'
     }
   },
-  judges: [{
+  teams: [teamSchema],
+  judges: [judgeSchema],
+  participants: [{
+    walletAddress: {
+      type: String,
+    },
     userId: {
       type: Schema.Types.ObjectId,
       ref: 'User'
     },
-    name: String,
-    bio: String,
-    avatarUrl: String
-  }],
-  participants: [{
-    teams: [{
-      userId: {
-        type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-      },
-    }],
     registeredAt: {
       type: Date,
       default: Date.now
+    }
+  }],
+  Rules:[{
+    type:String
+  }],
+  Resources:[{
+    name:{
+      type:String
     },
-    walletAddress: {
-      type: String,
-      trim: true
+    link:{
+      type:String
+    }
+  }],
+  judginCriteria:[{
+    description:{
+      type:String
+    },
+    weight:{
+      type:Number
     }
   }],
   projects: [projectSubmissionSchema],
-  rules: {
-    type: String
-  },
-  criteria: [{
-    name: String,
-    description: String,
-    weight: Number
-  }],
 }, { timestamps: true });
 
 module.exports = mongoose.model('Hackathon', hackathonSchema);

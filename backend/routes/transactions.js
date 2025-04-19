@@ -107,14 +107,26 @@ router.get("/:eventId/tickets",async(req,res)=>{
   const {eventId} = req.params;
   try{
     const tickets = await Ticket.find({eventId});
-    if(!tickets || tickets.length === 0){
-      return res.status(404).json({error:"No tickets found"});
-    }
     res.status(200).json({tickets});
   }catch(err){
     console.error("Error fetching tickets:", err);
     res.status(500).json({error:"Failed to fetch tickets"});
   }
 })
+
+router.get("/:ownerAddress/tickets", async(req,res)=>{
+  const {ownerAddress} = req.params;
+  try{
+    const normalizedAddress = ownerAddress.toLowerCase();
+    const tickets = await Ticket.find({ownerAddress: normalizedAddress});
+    if(!tickets || tickets.length === 0){
+      return res.status(404).json({error:"No tickets found"});
+    }
+    return res.status(200).json({tickets});
+  }catch(err){
+    console.error("Error fetching tickets:", err);
+    res.status(500).json({error:"Failed to fetch tickets"});
+  }
+  })
 
 module.exports = router;

@@ -27,7 +27,27 @@ const userSchema = new Schema({
   },
   bio: {
     type: String
-  }
+  },
+  eventsCreated: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Events'
+  }],
+  eventsRegistered: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Events'
+  }],
+  hackathonsParticipated: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Hackathons'
+  }],
+  hackathonsCreated: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Hackathons'
+  }],
+  ticketsPurchased: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Events'
+  }],
 }, { 
   timestamps: true 
 });

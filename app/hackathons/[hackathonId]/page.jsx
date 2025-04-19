@@ -1,473 +1,490 @@
-"use client"
-import React, { useState, useEffect } from 'react';
-import { useRouter,useParams } from 'next/navigation';
+"use client";
+import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { Calendar, Clock, Trophy, Users, FileCode, Award, CheckCircle, BookOpen, Link, ChevronRight } from 'lucide-react';
+import { set } from 'mongoose';
 
-// Mock data for demonstration purposes
-const mockHackathon = {
-     eventId: 2,
-     name: "Web3 Innovation Hackathon",
-     description: "Join us for a weekend of innovation and collaboration where participants will build groundbreaking blockchain applications. This hackathon challenges developers, designers, and entrepreneurs to create solutions that leverage blockchain technology to solve real-world problems. Cash prizes and opportunities for venture funding await the winning teams!",
-     eventType: "HACKATHON",
-     price: 0,
-     capacity: 100,
-     ticketsSold: 85,
-     organizerAddress: "0xabcdef1234567890",
-     startDate: "2025-05-15T09:00:00Z",
-     endDate: "2025-05-17T18:00:00Z",
-     registrationDeadline: "2025-05-10T23:59:59Z",
-     submissionDeadline: "2025-05-17T17:00:00Z",
-     location: {
-          name: "Innovation Center",
-          address: "456 Tech Blvd, Austin, TX",
-          coordinates: {
-               type: "Point",
-               coordinates: [-97.7431, 30.2672]
-          },
-          virtualLink: "https://virtual-platform.example.com/hackathon"
-     },
-     image: "/api/placeholder/800/400",
-     prizes: [
-          { rank: "1st", amount: "$5,000", description: "Cash prize plus mentorship opportunity" },
-          { rank: "2nd", amount: "$2,500", description: "Cash prize" },
-          { rank: "3rd", amount: "$1,000", description: "Cash prize" }
-     ],
-     judges: [
-          { name: "Dr. Sarah Chen", role: "CTO at BlockTech", image: "/api/placeholder/100/100" },
-          { name: "Michael Rodriguez", role: "Founder of DAppLabs", image: "/api/placeholder/100/100" },
-          { name: "Aisha Johnson", role: "Blockchain Researcher", image: "/api/placeholder/100/100" }
-     ],
-     timeline: [
-          { time: "May 15, 9:00 AM", event: "Opening Ceremony" },
-          { time: "May 15, 10:00 AM", event: "Hacking Begins" },
-          { time: "May 16, 2:00 PM", event: "Mid-point Check-in" },
-          { time: "May 17, 4:00 PM", event: "Submissions Due" },
-          { time: "May 17, 5:00 PM", event: "Presentations & Judging" },
-          { time: "May 17, 6:30 PM", event: "Awards Ceremony" }
-     ],
-     rules: [
-          "Teams of 1-4 people",
-          "All code must be written during the hackathon",
-          "Use of open-source libraries and APIs is permitted",
-          "Submissions must include source code and a demo video",
-          "Projects must be relevant to the blockchain/Web3 theme"
-     ],
-     resources: [
-          { name: "Documentation Hub", link: "#" },
-          { name: "API Resources", link: "#" },
-          { name: "Mentor Support", link: "#" }
-     ]
-};
+const HackathonCard=({ hackathon }) =>{
+  const [activeTab, setActiveTab] = useState('overview');
+  
+  // Format dates
+  const formatDate = (dateString) => {
+    const options = { month: 'short', day: 'numeric', year: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+  
+  // Format time
+  const formatTime = (dateString) => {
+    const options = { hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleTimeString('en-US', options);
+  };
+  
+  // Calculate time remaining for registration
+  const calculateTimeRemaining = () => {
+    const now = new Date();
+    const deadline = new Date(hackathon.startDate);
+    const timeLeft = deadline - now;
+    
+    if (timeLeft <= 0) return "Registration closed";
+    
+    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    return `${days}d ${hours}h left`;
+  };
 
-export default function HackathonDetailsPage(){
-     const { id } = useParams(); // In a real app, you would use this to fetch the specific hackathon
-     const router = useRouter();
-     const [hackathon, setHackathon] = useState(null);
-     const [loading, setLoading] = useState(true);
-     const [error, setError] = useState(null);
-     const [isRegistered, setIsRegistered] = useState(false);
-     const [showConfirmation, setShowConfirmation] = useState(false);
+  // Calculate spots left
+  const calculateSpotsLeft = () => {
+    const registered = hackathon.participants ? hackathon.participants.length : 0;
+    return hackathon.capacity - registered;
+  };
 
-     useEffect(() => {
-          // In a real application, you would fetch from your API using the id parameter
-          // Example: fetchHackathonDetails(id);
+  // Format hackathon duration
+  const formatDuration = () => {
+    const start = new Date(hackathon.startDate);
+    const end = new Date(hackathon.endDate);
+    const durationMs = end - start;
+    const days = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
+    return `${days} days`;
+  };
 
-          // For now, we'll use mock data with a delay to simulate API call
-          const fetchData = async () => {
-               try {
-                    setLoading(true);
-                    // Simulating API delay
-                    await new Promise(resolve => setTimeout(resolve, 800));
-                    setHackathon(mockHackathon);
-                    setLoading(false);
-               } catch (err) {
-                    setError("Failed to load hackathon details. Please try again later.");
-                    setLoading(false);
-               }
-          };
+  // Sample resources (would be part of the hackathon data in a real app)
+  const resources = [
+    { name: "Starter Code", link: "#", description: "GitHub repo with boilerplate code" },
+    { name: "API Documentation", link: "#", description: "Documentation for available APIs" },
+    { name: "Design Assets", link: "#", description: "UI kit and design resources" },
+    { name: "Technical FAQs", link: "#", description: "Common questions and solutions" }
+  ];
 
-          fetchData();
-     }, []);
-
-     // Function to format date
-     const formatDate = (dateString) => {
-          if (!dateString) return '';
-          const date = new Date(dateString);
-          return date.toLocaleDateString('en-US', {
-               weekday: 'long',
-               month: 'long',
-               day: 'numeric',
-               year: 'numeric',
-               hour: '2-digit',
-               minute: '2-digit'
-          });
-     };
-
-     // Function to format date without time
-     const formatDateShort = (dateString) => {
-          if (!dateString) return '';
-          const date = new Date(dateString);
-          return date.toLocaleDateString('en-US', {
-               month: 'long',
-               day: 'numeric',
-               year: 'numeric'
-          });
-     };
-
-     // Check if registration deadline has passed
-     const isRegistrationClosed = (deadline) => {
-          if (!deadline) return false;
-          return new Date() > new Date(deadline);
-     };
-
-     // Check if submission period is active
-     const isSubmissionOpen = (startDate, submissionDeadline) => {
-          if (!startDate || !submissionDeadline) return false;
-          const now = new Date();
-          return now >= new Date(startDate) && now <= new Date(submissionDeadline);
-     };
-
-     // Calculate remaining time until registration deadline
-     const getTimeRemaining = (deadline) => {
-          if (!deadline) return { days: 0, hours: 0, minutes: 0 };
-
-          const total = new Date(deadline) - new Date();
-          if (total <= 0) return { days: 0, hours: 0, minutes: 0 };
-
-          const days = Math.floor(total / (1000 * 60 * 60 * 24));
-          const hours = Math.floor((total % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          const minutes = Math.floor((total % (1000 * 60 * 60)) / (1000 * 60));
-
-          return { days, hours, minutes };
-     };
-
-     const handleRegister = () => {
-          // In a real app, you would make an API call to register
-          setShowConfirmation(true);
-          setTimeout(() => {
-               setIsRegistered(true);
-               setShowConfirmation(false);
-          }, 1500);
-     };
-
-     const handleSubmitProject = () => {
-          // In a real app, navigate to project submission form
-          navigate(`/submit-project/${id}`);
-     };
-
-     if (loading) {
-          return (
-               <div className="min-h-screen bg-indigo-50 flex justify-center items-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
-               </div>
-          );
-     }
-
-     if (error || !hackathon) {
-          return (
-               <div className="min-h-screen bg-indigo-50 flex justify-center items-center p-4">
-                    <div className="bg-white rounded-lg shadow-md p-6 max-w-md w-full text-center">
-                         <h2 className="text-xl font-bold text-red-600 mb-4">Error</h2>
-                         <p className="text-gray-700 mb-4">{error || "Hackathon not found"}</p>
-                         <button
-                              onClick={() => navigate('/events')}
-                              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition duration-200"
-                         >
-                              Back to Events
-                         </button>
-                    </div>
-               </div>
-          );
-     }
-
-     const remaining = getTimeRemaining(hackathon.registrationDeadline);
-     const registrationClosed = isRegistrationClosed(hackathon.registrationDeadline);
-     const submissionOpen = isSubmissionOpen(hackathon.startDate, hackathon.submissionDeadline);
-
-     return (
-          <div className="min-h-screen bg-indigo-50">
-               {/* Confirmation Modal */}
-               {showConfirmation && (
-                    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-                         <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full">
-                              <div className="text-center">
-                                   <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100">
-                                        <svg className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                   </div>
-                                   <h3 className="text-lg font-medium text-gray-900 mt-4">Processing your registration</h3>
-                                   <p className="text-sm text-gray-500 mt-2">Please wait while we secure your spot...</p>
-                              </div>
-                         </div>
-                    </div>
-               )}
-
-               {/* Header with Hackathon Image */}
-               <header className="relative">
-                    <div className="h-64 md:h-80 w-full bg-gray-300 overflow-hidden">
-                         <img
-                              src={hackathon.image || "/api/placeholder/1200/400"}
-                              alt={hackathon.name}
-                              className="w-full h-full object-cover"
-                         />
-                         <div className="absolute inset-0 bg-gradient-to-t from-indigo-900 to-transparent opacity-70"></div>
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                         <div className="container mx-auto">
-                              <div className="flex flex-col md:flex-row md:items-end justify-between">
-                                   <div>
-                                        <span className="inline-block bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded mb-2">
-                                             HACKATHON
-                                        </span>
-                                        <h1 className="text-3xl md:text-4xl font-bold">{hackathon.name}</h1>
-                                   </div>
-                                   <div className="mt-4 md:mt-0">
-                                        <div className="bg-indigo-800 bg-opacity-70 rounded-lg px-4 py-2">
-                                             {registrationClosed ? (
-                                                  <span className="text-lg font-semibold">Registration Closed</span>
-                                             ) : (
-                                                  <div>
-                                                       <span className="text-sm">Registration closes in:</span>
-                                                       <div className="flex space-x-3 mt-1">
-                                                            <div className="text-center">
-                                                                 <span className="block text-xl font-bold">{remaining.days}</span>
-                                                                 <span className="text-xs text-indigo-200">days</span>
-                                                            </div>
-                                                            <div className="text-center">
-                                                                 <span className="block text-xl font-bold">{remaining.hours}</span>
-                                                                 <span className="text-xs text-indigo-200">hours</span>
-                                                            </div>
-                                                            <div className="text-center">
-                                                                 <span className="block text-xl font-bold">{remaining.minutes}</span>
-                                                                 <span className="text-xs text-indigo-200">mins</span>
-                                                            </div>
-                                                       </div>
-                                                  </div>
-                                             )}
-                                        </div>
-                                   </div>
-                              </div>
-                         </div>
-                    </div>
-               </header>
-
-               {/* Navigation bar */}
-               <nav className="bg-white shadow">
-                    <div className="container mx-auto px-4">
-                         <div className="flex overflow-x-auto whitespace-nowrap py-3 hide-scrollbar">
-                              <a href="#overview" className="px-4 py-2 text-indigo-600 font-medium">Overview</a>
-                              <a href="#details" className="px-4 py-2 text-gray-600 hover:text-indigo-600">Details</a>
-                              <a href="#timeline" className="px-4 py-2 text-gray-600 hover:text-indigo-600">Timeline</a>
-                              <a href="#prizes" className="px-4 py-2 text-gray-600 hover:text-indigo-600">Prizes</a>
-                              <a href="#judges" className="px-4 py-2 text-gray-600 hover:text-indigo-600">Judges</a>
-                              <a href="#rules" className="px-4 py-2 text-gray-600 hover:text-indigo-600">Rules</a>
-                              <a href="#resources" className="px-4 py-2 text-gray-600 hover:text-indigo-600">Resources</a>
-                         </div>
-                    </div>
-               </nav>
-
-               {/* Main Content */}
-               <main className="container mx-auto px-4 py-8">
-                    <div className="flex flex-col lg:flex-row gap-8">
-                         {/* Main Content */}
-                         <div className="w-full lg:w-2/3">
-                              {/* Overview Section */}
-                              <section id="overview" className="mb-10">
-                                   <div className="bg-white rounded-lg shadow-md p-6">
-                                        <h2 className="text-2xl font-bold text-indigo-800 mb-4">Overview</h2>
-                                        <p className="text-gray-700 mb-6">{hackathon.description}</p>
-
-                                        {/* Key Info */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                             <div className="flex items-start">
-                                                  <div className="bg-indigo-100 p-2 rounded-full mr-3">
-                                                       <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                       </svg>
-                                                  </div>
-                                                  <div>
-                                                       <h3 className="font-medium text-gray-800">Dates</h3>
-                                                       <p className="text-gray-600 text-sm">{formatDateShort(hackathon.startDate)} - {formatDateShort(hackathon.endDate)}</p>
-                                                  </div>
-                                             </div>
-                                             <div className="flex items-start">
-                                                  <div className="bg-indigo-100 p-2 rounded-full mr-3">
-                                                       <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                       </svg>
-                                                  </div>
-                                                  <div>
-                                                       <h3 className="font-medium text-gray-800">Location</h3>
-                                                       <p className="text-gray-600 text-sm">{hackathon.location.name}</p>
-                                                       <p className="text-gray-600 text-sm">{hackathon.location.address}</p>
-                                                  </div>
-                                             </div>
-                                             <div className="flex items-start">
-                                                  <div className="bg-indigo-100 p-2 rounded-full mr-3">
-                                                       <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                                                       </svg>
-                                                  </div>
-                                                  <div>
-                                                       <h3 className="font-medium text-gray-800">Entry Fee</h3>
-                                                       <p className="text-gray-600 text-sm">{hackathon.price === 0 ? 'Free' : `$${hackathon.price}`}</p>
-                                                  </div>
-                                             </div>
-                                             <div className="flex items-start">
-                                                  <div className="bg-indigo-100 p-2 rounded-full mr-3">
-                                                       <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                                       </svg>
-                                                  </div>
-                                                  <div>
-                                                       <h3 className="font-medium text-gray-800">Capacity</h3>
-                                                       <p className="text-gray-600 text-sm">{hackathon.capacity} participants ({hackathon.capacity - hackathon.ticketsSold} spots left)</p>
-                                                  </div>
-                                             </div>
-                                        </div>
-
-                                        {/* Virtual Link */}
-                                        {hackathon.location.virtualLink && (
-                                             <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-6">
-                                                  <h3 className="font-medium text-indigo-800 mb-1">Virtual Access</h3>
-                                                  <p className="text-gray-600 text-sm mb-2">This hackathon has both in-person and virtual components. Registered participants will receive access to:</p>
-                                                  <div className="flex items-center">
-                                                       <svg className="h-5 w-5 text-indigo-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                       </svg>
-                                                       <span className="text-indigo-600 font-medium">Virtual Platform Link</span>
-                                                  </div>
-                                             </div>
-                                        )}
-                                   </div>
-                              </section>
-
-                              {/* Timeline Section */}
-                              <section id="timeline" className="mb-10">
-                                   <div className="bg-white rounded-lg shadow-md p-6">
-                                        <h2 className="text-2xl font-bold text-indigo-800 mb-6">Event Timeline</h2>
-                                        <div className="relative">
-                                             <div className="absolute left-4 h-full w-0.5 bg-indigo-200"></div>
-                                             <div className="space-y-6">
-                                                  {hackathon.timeline.map((item, index) => (
-                                                       <div key={index} className="flex items-start">
-                                                            <div className="flex-shrink-0 bg-indigo-600 rounded-full h-8 w-8 flex items-center justify-center text-white relative z-10">
-                                                                 {index + 1}
-                                                            </div>
-                                                            <div className="ml-4">
-                                                                 <h3 className="font-medium text-gray-800">{item.event}</h3>
-                                                                 <input type="text" className="" value={item.time} />
-                                                            </div>
-                                                       </div>
-                                                  ))}
-                                             </div>
-                                        </div>
-                                   </div>
-                              </section>
-
-                              {/* Prizes Section */}
-                              <section id="prizes" className="mb-10">
-                                   <div className="bg-white rounded-lg shadow-md p-6">
-                                        <h2 className="text-2xl font-bold text-indigo-800 mb-6">Prizes</h2>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                             {hackathon.prizes.map((prize, index) => (
-                                                  <div
-                                                       key={index}
-                                                       className={`border rounded-lg p-4 ${index === 0 ? 'bg-yellow-50 border-yellow-200' : index === 1 ? 'bg-gray-50 border-gray-200' : 'bg-orange-50 border-orange-200'}`}
-                                                  >
-                                                       <div className="flex justify-between items-start mb-2">
-                                                            <span className="font-bold text-xl">{prize.rank}</span>
-                                                            <span className={`text-xl font-bold ${index === 0 ? 'text-yellow-600' : index === 1 ? 'text-gray-600' : 'text-orange-600'}`}>
-                                                                 {prize.amount}
-                                                            </span>
-                                                       </div>
-                                                       <p className="text-gray-600 text-sm">{prize.description}</p>
-                                                  </div>
-                                             ))}
-                                        </div>
-                                   </div>
-                              </section>
-
-                              {/* Judges Section */}
-                              <section id="judges" className="mb-10">
-                                   <div className="bg-white rounded-lg shadow-md p-6">
-                                        <h2 className="text-2xl font-bold text-indigo-800 mb-6">Judges</h2>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                             {hackathon.judges.map((judge, index) => (
-                                                  <div key={index} className="flex flex-col items-center text-center">
-                                                       <div className="w-20 h-20 mb-3 rounded-full overflow-hidden">
-                                                            <img src={judge.image} alt={judge.name} className="w-full h-full object-cover" />
-                                                       </div>
-                                                       <h3 className="font-medium text-gray-800">{judge.name}</h3>
-                                                       <p className="text-indigo-600 text-sm">{judge.role}</p>
-                                                  </div>
-                                             ))}
-                                        </div>
-                                   </div>
-                              </section>
-
-                              {/* Rules Section */}
-                              <section id="rules" className="mb-10">
-                                   <div className="bg-white rounded-lg shadow-md p-6">
-                                        <h2 className="text-2xl font-bold text-indigo-800 mb-4">Rules & Requirements</h2>
-                                        <ul className="list-disc list-inside space-y-2 text-gray-700">
-                                             {hackathon.rules.map((rule, index) => (
-                                                  <li key={index}>{rule}</li>
-                                             ))}
-                                        </ul>
-                                   </div>
-                              </section>
-
-                              {/* Resources Section */}
-                              <section id="resources" className="mb-10">
-                                   <div className="bg-white rounded-lg shadow-md p-6">
-                                        <h2 className="text-2xl font-bold text-indigo-800 mb-4">Resources</h2>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                             {hackathon.resources.map((resource, index) => (
-                                                  <a
-                                                       key={index}
-                                                       href={resource.link}
-                                                       className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-indigo-50 transition duration-200"
-                                                  >
-                                                       <div className="bg-indigo-100 p-2 rounded-full mr-3">
-                                                            <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                            </svg>
-                                                       </div>
-                                                       <span className="font-medium text-gray-800">{resource.name}</span>
-                                                  </a>
-                                             ))}
-                                        </div>
-                                   </div>
-                              </section>
-                         </div>
-
-                         {/* Sidebar */}
-                         <div className="w-full lg:w-1/3">
-                              <div className="sticky top-8">
-                                   {/* Registration Card */}
-                                   <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                                        <h2 className="text-xl font-bold text-indigo-800 mb-4">Registration</h2>
-
-                                        {/* Registration Status */}
-                                        <div className="mb-4">
-                                             <div className="flex justify-between text-sm mb-1">
-                                                  <span className="text-gray-600">Available spots</span>
-                                                  <span className="font-medium">{hackathon.capacity - hackathon.ticketsSold} / {hackathon.capacity}</span>
-                                             </div>
-                                             <div className="w-full bg-gray-200 rounded-full h-2.5">
-                                                  <div
-                                                       className="bg-indigo-600 h-2.5 rounded-full"
-                                                       style={{ width: `${(hackathon.ticketsSold / hackathon.capacity) * 100}%` }}
-                                                  ></div>
-                                             </div>
-                                        </div>
-                                   </div>
-                              </div>
-                         </div>
-                    </div>
-               </main>
+  return (
+    <div className="w-full bg-white shadow-lg rounded-xl overflow-hidden">
+      {/* Hero Section */}
+      <div className="h-64 bg-indigo-600 relative">
+        <img 
+          src="/api/placeholder/1200/400" 
+          alt={hackathon.name}
+          className="w-full h-full object-cover opacity-80"
+        />
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-indigo-900/40 to-indigo-900/80"></div>
+        <div className="absolute bottom-8 left-8 right-8 md:left-16 md:right-16">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">{hackathon.name}</h1>
+              <p className="text-indigo-100 text-sm md:text-base max-w-2xl line-clamp-2">{hackathon.description}</p>
+            </div>
           </div>
-     );
+        </div>
+      </div>
+      
+      {/* Navigation Tabs */}
+      <div className="border-b border-gray-200">
+        <div className="mx-6 md:mx-16 flex space-x-8 overflow-x-auto">
+          <button 
+            onClick={() => setActiveTab('overview')} 
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'overview' 
+                ? 'border-indigo-600 text-indigo-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Overview
+          </button>
+          <button 
+            onClick={() => setActiveTab('timeline')} 
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'timeline' 
+                ? 'border-indigo-600 text-indigo-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Timeline
+          </button>
+          <button 
+            onClick={() => setActiveTab('rules')} 
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'rules' 
+                ? 'border-indigo-600 text-indigo-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Rules & Criteria
+          </button>
+          <button 
+            onClick={() => setActiveTab('resources')} 
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'resources' 
+                ? 'border-indigo-600 text-indigo-600' 
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Resources
+          </button>
+        </div>
+      </div>
+      
+      {/* Main Content */}
+      <div className="flex flex-col md:flex-row">
+        {/* Left Content (Changes based on active tab) */}
+        <div className="w-full md:w-2/3 p-6 md:p-16">
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
+            <div>
+              {/* Key Info */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 bg-indigo-100 rounded-full">
+                    <Calendar className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Start Date</p>
+                    <p className="text-sm font-medium">{formatDate(hackathon.startDate)}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 bg-indigo-100 rounded-full">
+                    <Clock className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Duration</p>
+                    <p className="text-sm font-medium">{formatDuration()}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 bg-indigo-100 rounded-full">
+                    <Trophy className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Prize Pool</p>
+                    <p className="text-sm font-medium">{hackathon.prizePool.totalAmount} {hackathon.prizePool.currency}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 bg-indigo-100 rounded-full">
+                    <Users className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Capacity</p>
+                    <p className="text-sm font-medium">{hackathon.capacity} participants</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Description */}
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">About This Hackathon</h2>
+                <p className="text-gray-600">
+                  {hackathon.description}
+                </p>
+              </div>
+              
+              {/* Blockchain Details */}
+              <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-100 mb-8">
+                <h3 className="text-lg font-semibold text-indigo-800 mb-4">Blockchain Integration</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Contract Address</p>
+                    <p className="text-sm font-mono bg-white p-2 rounded mt-1 border border-indigo-100">
+                      {hackathon.web3Integration.contractAddress?.substring(0, 18) || ""}...
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Network</p>
+                    <p className="text-sm bg-white p-2 rounded mt-1 border border-indigo-100">
+                      ETHEREUM
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Token Type</p>
+                    <p className="text-sm bg-white p-2 rounded mt-1 border border-indigo-100">
+                      ERC-721
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Timeline Tab */}
+          {activeTab === 'timeline' && (
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 mb-6">Event Timeline</h2>
+              <div className="space-y-8">
+                <div className="relative pl-8 pb-8 border-l-2 border-indigo-200">
+                  <div className="absolute -left-2 top-0">
+                    <div className="w-4 h-4 rounded-full bg-indigo-600"></div>
+                  </div>
+                  <div className="mb-1">
+                    <span className="text-xs text-indigo-600 font-semibold">REGISTRATION OPENS</span>
+                  </div>
+                  <h3 className="text-base font-medium">Registration Period</h3>
+                  <p className="text-sm text-gray-600 mt-1">Until {formatDate(hackathon.registrationDeadline)} at {formatTime(hackathon.registrationDeadline)}</p>
+                </div>
+                
+                <div className="relative pl-8 pb-8 border-l-2 border-indigo-200">
+                  <div className="absolute -left-2 top-0">
+                    <div className="w-4 h-4 rounded-full bg-indigo-600"></div>
+                  </div>
+                  <div className="mb-1">
+                    <span className="text-xs text-indigo-600 font-semibold">EVENT STARTS</span>
+                  </div>
+                  <h3 className="text-base font-medium">Hackathon Kickoff</h3>
+                  <p className="text-sm text-gray-600 mt-1">{formatDate(hackathon.startDate)} at {formatTime(hackathon.startDate)}</p>
+                </div>
+                
+                <div className="relative pl-8 pb-8 border-l-2 border-indigo-200">
+                  <div className="absolute -left-2 top-0">
+                    <div className="w-4 h-4 rounded-full bg-indigo-600"></div>
+                  </div>
+                  <div className="mb-1">
+                    <span className="text-xs text-indigo-600 font-semibold">SUBMISSIONS DUE</span>
+                  </div>
+                  <h3 className="text-base font-medium">Project Submission Deadline</h3>
+                  <p className="text-sm text-gray-600 mt-1">{formatDate(hackathon.submissionDeadline)} at {formatTime(hackathon.submissionDeadline)}</p>
+                </div>
+                
+                <div className="relative pl-8">
+                  <div className="absolute -left-2 top-0">
+                    <div className="w-4 h-4 rounded-full bg-indigo-600"></div>
+                  </div>
+                  <div className="mb-1">
+                    <span className="text-xs text-indigo-600 font-semibold">EVENT ENDS</span>
+                  </div>
+                  <h3 className="text-base font-medium">Hackathon Closing & Awards</h3>
+                  <p className="text-sm text-gray-600 mt-1">{formatDate(hackathon.endDate)} at {formatTime(hackathon.endDate)}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Rules Tab */}
+          {/* Rules Tab */}
+{activeTab === 'rules' && (
+  <div>
+    <h2 className="text-xl font-semibold text-gray-800 mb-6">Rules & Judging Criteria</h2>
+    
+    {/* Rules */}
+    <div className="mb-8">
+      <h3 className="text-lg font-medium text-indigo-800 mb-4">Hackathon Rules</h3>
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <ul className="space-y-3">
+          {hackathon.Rules && hackathon.Rules.map((rule, index) => (
+            <li key={index} className="flex items-start">
+              <CheckCircle className="h-5 w-5 text-indigo-600 mr-2 mt-0.5 flex-shrink-0" />
+              <span className="text-gray-700">{rule}</span>
+            </li>
+          ))}
+          {(!hackathon.Rules || hackathon.Rules.length === 0) && (
+            <li className="text-gray-500">No rules have been specified for this hackathon.</li>
+          )}
+        </ul>
+      </div>
+    </div>
+    
+    {/* Judging Criteria */}
+    <div>
+      <h3 className="text-lg font-medium text-indigo-800 mb-4">Judging Criteria</h3>
+      {hackathon.judginCriteria && hackathon.judginCriteria.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {hackathon.judginCriteria.map((criterion, index) => (
+            <div key={index} className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-gray-800">{criterion.name}</h4>
+                <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded">
+                  {criterion.weight}%
+                </span>
+              </div>
+              <p className="text-gray-600 text-sm">{criterion.description}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <p className="text-gray-500">No judging criteria have been specified for this hackathon.</p>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+{/* Resources Tab */}
+{activeTab === 'resources' && (
+  <div>
+    <h2 className="text-xl font-semibold text-gray-800 mb-6">Hackathon Resources</h2>
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {hackathon.Resources && hackathon.Resources.map((resource, index) => (
+        <div key={index} className="bg-white rounded-lg border border-gray-200 p-6 hover:border-indigo-300 transition-colors">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-3">
+              <div className="p-2 bg-indigo-100 rounded">
+                <BookOpen className="h-5 w-5 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-800">{resource.name}</h3>
+                {resource.description && (
+                  <p className="text-sm text-gray-600 mt-1">{resource.description}</p>
+                )}
+              </div>
+            </div>
+            <a 
+              href={resource.link} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="p-1 text-indigo-600 hover:text-indigo-800"
+            >
+              <Link className="h-5 w-5" />
+            </a>
+          </div>
+        </div>
+      ))}
+      {(!hackathon.Resources || hackathon.Resources.length === 0) && (
+        <div className="col-span-2 bg-white rounded-lg border border-gray-200 p-6">
+          <p className="text-gray-500">No resources have been provided for this hackathon.</p>
+        </div>
+      )}
+    </div>
+    
+    <div className="mt-8 bg-indigo-50 p-6 rounded-lg">
+      <h3 className="text-lg font-medium text-indigo-800 mb-2">Need Help?</h3>
+      <p className="text-gray-600 mb-4">Join our Discord server for technical support, team matching, and mentor office hours throughout the hackathon.</p>
+      <button className="flex items-center text-indigo-700 font-medium hover:text-indigo-900">
+        Join Discord Community
+        <ChevronRight className="h-4 w-4 ml-1" />
+      </button>
+    </div>
+  </div>
+)}
+        </div>
+        
+        {/* Right Sidebar (Registration) */}
+        <div className="w-full md:w-1/3 p-6 md:p-6 md:pt-16 bg-gray-50 border-t md:border-t-0 md:border-l border-gray-200">
+          <div className="sticky top-6">
+            {/* Registration Card */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Registration</h3>
+              
+              {/* Deadline */}
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
+                <div>
+                  <p className="text-sm text-gray-500">Registration Deadline</p>
+                  <p className="font-medium">{formatDate(hackathon.registrationDeadline)}</p>
+                </div>
+                <div className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded text-sm font-medium">
+                  {calculateTimeRemaining()}
+                </div>
+              </div>
+              
+              {/* Spots */}
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm text-gray-500">Available Spots</p>
+                  <p className="text-sm font-medium">{calculateSpotsLeft()} of {hackathon.capacity}</p>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-indigo-600 h-2 rounded-full" 
+                    style={{ width: `${(1 - (calculateSpotsLeft() / hackathon.capacity)) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+              
+              {/* Register Button */}
+              <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-md text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                Register Now
+              </button>
+              
+              <p className="text-xs text-center text-gray-500 mt-3">
+                By registering, you agree to the hackathon rules and terms.
+              </p>
+            </div>
+            
+            {/* Key Dates */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-medium text-gray-800 mb-4">Key Dates</h3>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Registration Closes</p>
+                    <p className="text-xs text-gray-500">{formatDate(hackathon.registrationDeadline)}</p>
+                  </div>
+                  <div className="flex items-center">
+                    <Clock className="h-4 w-4 text-indigo-600 mr-1" />
+                    <span className="text-xs text-indigo-600">{calculateTimeRemaining()}</span>
+                  </div>
+                </div>
+                
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-sm font-medium">Event Starts</p>
+                  <p className="text-xs text-gray-500">{formatDate(hackathon.startDate)}</p>
+                </div>
+                
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-sm font-medium">Submissions Due</p>
+                  <p className="text-xs text-gray-500">{formatDate(hackathon.submissionDeadline)}</p>
+                </div>
+                
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-sm font-medium">Event Ends</p>
+                  <p className="text-xs text-gray-500">{formatDate(hackathon.endDate)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function hackathon(){
+     const [hackathonId, setHackathonId] = useState(null);
+     const pathname = usePathname();
+     const [hackathon,setHackathon] = useState({
+            name: "Hackathon Name",
+            startDate: "2023-10-01T00:00:00Z",
+            endDate: "2023-10-05T23:59:59Z",
+            registrationDeadline: "2023-09-30T23:59:59Z",
+            status: "upcoming",
+            description: "This is a sample hackathon description. It provides an overview of the event, including its goals, themes, and any other relevant information.",
+            criteria: [
+           { _id: 1, name: "Innovation", weight: 40, description: "How innovative is the solution?" },
+           { _id: 2, name: "Technical Complexity", weight: 30, description: "How technically challenging is the project?" },
+           { _id: 3, name: "Presentation", weight: 30, description: "How well is the project presented?" }
+            ],
+            rules: "1. All participants must register.\n2. Teams must consist of 1 to 4 members.\n3. Projects must be original and created during the hackathon.",
+            capacity: 100,
+            prizePool: { totalAmount: 5000, currency: "USD" },
+            web3Integration: {
+           contractAddress: "0x1234567890abcdef1234567890abcdef12345678",
+           network: "Ethereum",
+           tokenType: "ERC20"
+            }
+     })
+     useEffect(()=>{
+          const fetchHackathon = async () =>{
+            const segments = pathname.split("/").filter(Boolean); // removes empty strings
+            const hackathonId = segments[1]; // since segments = ['hackathons', 'abc123']
+            setHackathonId(hackathonId);            
+               try{
+               const response = await fetch(`http://localhost:8000/api/hackathon/${hackathonId}`);
+               if(!response.ok){
+                    throw new Error("Failed to fetch hackathon data");
+               }
+               const data = await response.json();
+               setHackathon(data);
+              }catch(err){
+                console.error(err); 
+              }
+          }
+          fetchHackathon();
+     },[hackathonId])
+     return (
+          <div className="flex items-center justify-center min-h-screen bg-gray-100 w-full text-black">
+               <HackathonCard hackathon={hackathon} />
+          </div>
+     )
 }
