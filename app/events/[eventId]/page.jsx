@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { jsPDF } from 'jspdf';
 import { useRouter } from 'next/navigation';
+import { ethers } from 'ethers';
 
 export default function EventDetailsPage() {
   const { eventId } = useParams();
@@ -42,27 +43,64 @@ export default function EventDetailsPage() {
     fetchEvent();
   }, [eventId]);
 
-  const handlePurchase = async (e) => {
-    setIsProcessing(true);
-    try {
-      const res = await fetch(`http://localhost:8000/api/transactions/${eventId}/buy`, {
-        method: 'POST',
-        body: JSON.stringify({ buyerAddress: '0xB94e821CDD6701c2fCd635F943db0e769EB482a0' }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
 
-      const result = await res.json();
-      setTransactionResult(result);
-      generatePDF(result);
-    } catch (err) {
-      console.error('Transaction failed:', err);
-      alert('Transaction failed. Please try again.');
-    } finally {
-      setIsProcessing(false);
+const handlePurchase = async () => {
+  setIsProcessing(true);
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert("Please login first.");
+      router.push('/login');
+      return;
     }
-  };
+
+    // 1. Get wallet provider
+    if (!window.ethereum) {
+      alert("MetaMask not found.");
+      return;
+    }
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const address = await signer.getAddress();
+
+    // 2. Prepare a message to sign
+    const message = `I am signing to confirm ticket purchase for event ${eventId}`;
+    const signature = await signer.signMessage(message);
+
+    console.log("Signed message:", signature);
+
+    // 3. Send the signed message to backend (optional, if you're verifying)
+    const res = await fetch(`http://localhost:8000/api/transactions/${eventId}/buy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        signature,
+        message,
+        walletAddress: address,
+      }),
+    });
+
+    const data = await res.json();
+    console.log("Purchase response:", data);
+
+    if (res.ok) {
+      setTransactionResult(data);
+    } else {
+      throw new Error(data.message || "Something went wrong");
+    }
+
+  } catch (error) {
+    console.error("Error during purchase:", error);
+    alert("Purchase failed. Check console for details.");
+  } finally {
+    setIsProcessing(false);
+  }
+};
+
 
   const formatDate = (dateString) => {
     if (!dateString) return '';

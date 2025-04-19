@@ -16,21 +16,26 @@ const signer = new ethers.Wallet("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c
 const contractAddress = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
 const contract = new ethers.Contract(contractAddress, contractAbi.abi, signer);
 
+
 router.post("/:eventId/buy", async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { buyerAddress } = req.body;
+    const { signature, message, walletAddress } = req.body;
 
-    console.log("Received eventId:", eventId);
+    console.log("Verifying signature...");
+    const recoveredAddress = ethers.utils.verifyMessage(message, signature);
+    console.log("Recovered Address:", recoveredAddress);
+    console.log("Provided Wallet Address:", walletAddress);
 
-    // Find the event document first
+    if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+      return res.status(401).json({ error: "Signature verification failed" });
+    }
+
+    // Fetch the event
     let event;
-
     if (eventId.match(/^[0-9a-fA-F]{24}$/)) {
-      // If it's a MongoDB ObjectId, query by _id
       event = await Event.findById(eventId);
     } else {
-      // Try to convert to Number for eventId field
       const numEventId = Number(eventId);
       if (isNaN(numEventId)) {
         return res.status(400).json({ error: "Invalid event ID format" });
@@ -42,36 +47,27 @@ router.post("/:eventId/buy", async (req, res) => {
       return res.status(404).json({ error: "Event not found" });
     }
 
-    console.log("Found event:", event);
-
-    // IMPORTANT: Use the numeric eventId from the event document 
-    // for smart contract interaction
     const numericEventId = event.eventId;
-    console.log("Using numeric eventId for contract:", numericEventId);
 
-    // Now interact with the contract using the numeric ID
     const tx = await contract.buyTicket(numericEventId, {
-      value: ethers.utils.parseEther(event.price.toString()) // Set appropriate value
+      value: ethers.utils.parseEther(event.price.toString())
     });
 
-    // Wait for the transaction to be mined
     const receipt = await tx.wait();
-
-    // Generate a unique ticket ID
     const ticketId = Math.floor(Math.random() * 1000000);
 
     event.ticketsSold += 1;
     await event.save();
-    // Create a new ticket in the database
+
     const ticket = new Ticket({
       ticketId,
-      eventId: event.eventId, // Use the numeric eventId
-      ownerAddress: buyerAddress,
-      originalOwnerAddress: buyerAddress,
+      eventId: event.eventId,
+      ownerAddress: walletAddress,
+      originalOwnerAddress: walletAddress,
       mintedAt: new Date(),
       transferHistory: [{
         fromAddress: null,
-        toAddress: buyerAddress,
+        toAddress: walletAddress,
         price: event.price,
         timestamp: new Date(),
         transactionHash: receipt.transactionHash
@@ -80,11 +76,10 @@ router.post("/:eventId/buy", async (req, res) => {
 
     await ticket.save();
 
-    // Generate QR code
     const qrData = JSON.stringify({
       ticketId,
       eventId: event.eventId,
-      ownerAddress: buyerAddress,
+      ownerAddress: walletAddress,
       eventName: event.name
     });
 
