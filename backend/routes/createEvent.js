@@ -95,7 +95,20 @@ router.get('/getEvents/:eventId', userMiddleware, async (req, res) => {
        res.status(500).json({ message: "Error fetching event" });
      }
 });
-router.get('/getEvents/organizer/:organizerAddress', userMiddleware, async (req, res) => {
-  
+router.get('/getEvents/organizer/:organizerAddress', async (req, res) => {
+  try{
+    const { organizerAddress } = req.params;
+
+    const events = await Event.find({ organizerAddress: organizerAddress });
+
+    if (!events) {
+      return res.status(404).json({ message: "No events found for this organizer" });
+    }
+
+    res.status(200).json(events);
+  }catch(err){
+    console.error(err);
+    res.status(500).json({ message: "Error fetching events" });
+  }
 })
 module.exports = router;

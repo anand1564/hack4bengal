@@ -48,11 +48,11 @@ EventChain is a decentralised event management platform meant for users to effic
 
 
 # Tech/Service | Description
-Next.js | Frontend framework for building React apps
-Hardhat | Ethereum development environment for compiling, testing, and deploying smart contracts
-Solidity | Smart contract programming language
-MongoDB | NoSQL database for storing users, events, and hackathon data
-Pinata | IPFS pinning service for storing event metadata like images
-Alchemy | Used for Sepolia testnet RPC connection
-JWT | For user authentication and session handling
+0. Next.js | Frontend framework for building React apps
+1. Hardhat | Ethereum development environment for compiling, testing, and deploying smart contracts
+2. Solidity | Smart contract programming language
+3. MongoDB | NoSQL database for storing users, events, and hackathon data
+4. Pinata | IPFS pinning service for storing event metadata like images
+5. Alchemy | Used for Sepolia testnet RPC connection
+6. JWT | For user authentication and session handling
 Ethereum | Blockchain platform the contracts are deployed on

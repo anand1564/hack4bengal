@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 // Mock data for demonstration purposes
-const mockUsername = "JohnDoe";
 const mockEvents = [
   {
     eventId: 1,
@@ -71,7 +70,65 @@ const EventsPage = () => {
   const [error, setError] = useState(null);
   const [hackathons, setHackathons] = useState([]);
   const router = useRouter(); 
+  const [userData,setUserData] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
+  useEffect(() => {
+    const sessionToken = sessionStorage.getItem('token');
+    const localToken = localStorage.getItem('token');
+    const token = sessionToken || localToken;
+
+    if (token) {
+      if (!sessionToken && localToken) {
+        const currentAddress = sessionStorage.getItem('userAddress');
+        verifyAndFetchUserData(localToken, currentAddress);
+      } else {
+        setIsLoggedIn(true);
+        fetchUserData(token);
+      }
+    }
+  }, []);
+  const verifyAndFetchUserData = async (token, currentAddress) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/auth/user', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (!currentAddress || data.address === currentAddress) {
+          sessionStorage.setItem('token', token);
+          sessionStorage.setItem('userAddress', data.address);
+          setIsLoggedIn(true);
+          setUserData(data);
+        } else {
+          localStorage.removeItem('token');
+        }
+      } else {
+        localStorage.removeItem('token');
+      }
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      localStorage.removeItem('token');
+    }
+  };
+  const fetchUserData = async (token) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/auth/user', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUserData(data);
+      } else {
+        handleLogout();
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      handleLogout();
+    }
+  };
   useEffect(() => {
      async function fetchEvents() {
       const token = localStorage.getItem('token');
@@ -143,7 +200,7 @@ const EventsPage = () => {
     if (location.name) return location.name;
     return 'Location details available upon registration';
   };
-
+  const mockUsername = userData?.name || "User";
   return (
     <div className="min-h-screen bg-indigo-50">
       {/* Header */}
@@ -274,7 +331,7 @@ const EventsPage = () => {
                         </span>
                       </div>
                       <div className="text-indigo-600 font-bold">
-                        {event.price === 0 ? 'Free' : `$${event.price}`}
+                        {event.price === 0 ? 'Free' : `ETH ${event.price}`}
                       </div>
                     </div>
                     <div className="mt-4 flex justify-between items-center">

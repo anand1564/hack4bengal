@@ -88,6 +88,7 @@ const handlePurchase = async () => {
     console.log("Purchase response:", data);
 
     if (res.ok) {
+    alert("Ticket purchased successfully!");
       setTransactionResult(data);
     } else {
       throw new Error(data.message || "Something went wrong");
