@@ -3,7 +3,7 @@
 
 **EventChain** is a decentralized event management platform designed to make organizing and participating in events (like hackathons, workshops, and meetups) seamless, secure, and collaborative — all powered by blockchain.
 
-## 🎥 Demo
+## Demo
 Check out the demo video here: [Watch on YouTube](https://www.youtube.com/watch?v=2a-8n70l-2k)
 
 ## How to Run the Project Locally
