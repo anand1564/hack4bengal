@@ -1,18 +1,24 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Calendar, Clock, Trophy, Users, FileCode, Award, CheckCircle, BookOpen, Link, ChevronRight } from 'lucide-react';
 import { set } from 'mongoose';
 import useAuth from '../../hooks/user';
 
 const HackathonCard=({ hackathon }) =>{
+  const router = useRouter();
   const {user} = useAuth();
+  const [userData, setUserData] = useState(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmissionOpen, setIsSubmissionOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const pathname = usePathname();
+  let timeRemaining = hackathon.startDate - new Date();
+  if(timeRemaining>0){
+    setIsSubmissionOpen(false);
+  }
   const [registrationData,setRegistrationData] = useState({
     name: "",
     address: "",
@@ -38,8 +44,9 @@ const HackathonCard=({ hackathon }) =>{
       }
       const data = await response.json();
       console.log(data);
+      setIsRegistered(true);
+      setIsSubmitted(false);
       setIsModalOpen(false);
-
     }catch(err){
       console.error(err);
     }
@@ -64,19 +71,23 @@ const HackathonCard=({ hackathon }) =>{
   };
   
   // Calculate time remaining for registration
-  const calculateTimeRemaining = () => {
+  function calculateTimeRemaining() {
+    if (!hackathon?.registrationDeadline) return "N/A";
+  
+    const deadline = new Date(hackathon.registrationDeadline);
     const now = new Date();
-    const deadline = new Date(hackathon.startDate);
-    const timeLeft = deadline - now;
-    
-    if (timeLeft <= 0) return "Registration closed";
-    
-    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
-    return `${days}d ${hours}h left`;
-  };
-
+  
+    if (isNaN(deadline.getTime())) return "Invalid deadline";
+  
+    const diff = deadline - now;
+    if (diff <= 0) return "Closed";
+  
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff / (1000 * 60)) % 60);
+  
+    return `${hours}h ${minutes}m left`;
+  }
+  
   // Calculate spots left
   const calculateSpotsLeft = () => {
     const registered = hackathon.participants ? hackathon.participants.length : 0;
@@ -99,6 +110,47 @@ const HackathonCard=({ hackathon }) =>{
     { name: "Design Assets", link: "#", description: "UI kit and design resources" },
     { name: "Technical FAQs", link: "#", description: "Common questions and solutions" }
   ];
+  useEffect(() => {
+    const now = new Date();
+    const startDate = new Date(hackathon.startDate);
+    const submissionDeadline = new Date(hackathon.submissionDeadline);
+  
+    // Check submission window
+    setIsSubmissionOpen(now >= startDate && now <= submissionDeadline);
+  }, [hackathon]);
+  
+  // 👇 Extracted outside so it can be reused after registration
+  const checkUserStatus = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/hackathon/${hackathon._id}/teams/${userData.address}`
+      );
+  
+      if (!response.ok) {
+        throw new Error("Failed to check registration status");
+      }
+  
+      const data = await response.json();
+      setIsRegistered(data.isRegistered);
+      setIsSubmitted(data.isSubmitted);
+    } catch (error) {
+      console.error("Error checking user registration status:", error);
+      setIsRegistered(false); // fallback
+      setIsSubmitted(false);
+    }
+  };
+  
+  // 👇 Initial check on page load
+  useEffect(() => {
+    if (userData?.address && hackathon?._id) {
+      console.log("userData:", userData);
+  console.log("hackathon ID:", hackathon?._id);
+      checkUserStatus();
+    }
+  }, [userData, hackathon]);
+  
+  // 👇 Call this after successful registration
+  
 
   return (
     <div className="w-full bg-white shadow-lg rounded-xl overflow-hidden">
@@ -505,7 +557,7 @@ const HackathonCard=({ hackathon }) =>{
               <div className="mb-6">
                 <div className="flex justify-between items-center mb-2">
                   <p className="text-sm text-gray-500">Available Spots</p>
-                  <p className="text-sm font-medium">{calculateSpotsLeft()} of {hackathon.capacity}</p>
+                  <p className="text-sm font-medium">{hackathon.capacity} left</p>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
@@ -516,24 +568,46 @@ const HackathonCard=({ hackathon }) =>{
               </div>
               
               {/* Register Button */}
-              {isRegistered ? (
-  isSubmissionOpen ? (
-    <button className="bg-green-600 text-white px-4 py-2 rounded">
-      Submit Project
-    </button>
-  ) : (
-    <button className="bg-gray-400 text-white px-4 py-2 rounded cursor-not-allowed" disabled>
-      Already Registered
-    </button>
-  )
-) : (
-  <button
-    className="bg-blue-600 text-white px-4 py-2 rounded"
-    onClick={() => setIsModalOpen(true)}
-  >
-    Register Now
-  </button>
-)}  
+              {/* Register or Submit Button */}
+{(() => {
+  const now = new Date();
+  const startDate = new Date(hackathon.startDate);
+  const submissionDeadline = new Date(hackathon.submissionDeadline); // assumes backend provides this
+
+  if (now < startDate) {
+    // Registration open, hackathon hasn't started
+    return isRegistered ? (
+      <button className="bg-gray-400 text-white px-4 py-2 rounded cursor-not-allowed" disabled>
+        Already Registered
+      </button>
+    ) : (
+      <button
+        className="bg-blue-600 text-white px-4 py-2 rounded"
+        onClick={() => setIsModalOpen(true)}
+      >
+        Register Now
+      </button>
+    );
+  } else if (now >= startDate && now <= submissionDeadline) {
+    // Hackathon ongoing
+    return isRegistered ? (
+      <button className="bg-green-600 text-white px-4 py-2 rounded">
+        Submit Project
+      </button>
+    ) : (
+      <button className="bg-gray-400 text-white px-4 py-2 rounded cursor-not-allowed" disabled>
+        Registration Closed
+      </button>
+    );
+  } else {
+    // Submission period over
+    return (
+      <button className="bg-purple-600 text-white px-4 py-2 rounded" onClick={(e)=>router.push(`/hackathons/${hackathon._id}/submissions`)}>
+        View Results / Submissions
+      </button>
+    );
+  }
+})()}
               <p className="text-xs text-center text-gray-500 mt-3">
                 By registering, you agree to the hackathon rules and terms.
               </p>

@@ -27,7 +27,7 @@ export default function Navbar() {
   return (
     <nav className="py-4 px-6 md:px-12 flex items-center justify-between">
       <div className="flex items-center">
-        <h1 className="text-2xl font-bold text-indigo-600">NFTickets</h1>
+        <h1 className="text-2xl font-bold text-indigo-600">EventChain</h1>
       </div>
 
       {/* Desktop Navigation */}

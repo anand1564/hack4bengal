@@ -1,17 +1,19 @@
-import { useMemo } from "react";
-import { jwtDecode } from "jwt-decode"; // ✅ use named import with camelCase
+import { useState, useEffect } from "react";
+import {jwtDecode} from "jwt-decode";
 
 const useAuth = () => {
-  const token = localStorage.getItem("token");
+  const [user, setUser] = useState(null);
 
-  const user = useMemo(() => {
-    if (!token) return null;
-    try {
-      return jwtDecode(token); // ✅ use jwtDecode instead of jwt_decode
-    } catch {
-      return null;
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        setUser(jwtDecode(token));
+      } catch {
+        setUser(null);
+      }
     }
-  }, [token]);
+  }, []);
 
   return { user, isLoggedIn: !!user };
 };

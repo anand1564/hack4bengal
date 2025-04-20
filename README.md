@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## Getting Started
+#  Hack4Bengal Virtual Hackathon Project – **EventChain**
 
-First, run the development server:
+**EventChain** is a decentralized event management platform designed to make organizing and participating in events (like hackathons, workshops, and meetups) seamless, secure, and collaborative — all powered by blockchain.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## How to Run the Project Locally
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. Clone the Repository
+2. npm install
+3. npm run dev
+4. Start the Backend Server
+cd backend
+npm install
+npx nodemon index.js
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+5. Deploy the Smart Contract Locally
+In the root folder:
+npx hardhat compile
+npx hardhat node
+npx hardhat run scripts/deploy.js --network localhost
+* Don't forget to update your hardhat.config.js file to support the localhost network.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+## Problem statement that we are solving 
 
-To learn more about Next.js, take a look at the following resources:
+EventChain is a decentralised event management platform meant for users to efficiently create and organise live sessions, workshops , offline meetups and hackathons too.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+0. Secure & Fast Ticketing with blockchain-backed payments
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Tamper-Proof Tickets with auto-generated QR-coded PDFs after successful transactions
 
-## Deploy on Vercel
+2. Real-Time Event Chats to collaborate and share ideas
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. Hackathon Hosting Support for seamless organizer and participant experience
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. Persistent Dashboard to manage and view your ticket history without fear of losing them
+
+## Problems that we faced
+
+1. None of us really had much prior experience building web3 projects so this was really a challenge for us and we had to learn a lot to keep up and deliver the project in time .
+
+2. Finalising the schema for the db was much more complicated than expected , we had to make changes to it every now and then to accomodate new features in it.
+
+3. Working with so many lines of code in the frontend and backend was a confusing and challenging task, we could have managed the components better and avoid the mess, but i guess that's for the next time.
+
+4. Sharing files and changes with each other through github was daunting. None of us had really collaborated on a single repo before, so we constantly had moments where something was working on one person's device but not in the other's.
+
+
+
+# Tech/Service | Description
+Next.js | Frontend framework for building React apps
+Hardhat | Ethereum development environment for compiling, testing, and deploying smart contracts
+Solidity | Smart contract programming language
+MongoDB | NoSQL database for storing users, events, and hackathon data
+Pinata | IPFS pinning service for storing event metadata like images
+Alchemy | Used for Sepolia testnet RPC connection
+JWT | For user authentication and session handling
+Ethereum | Blockchain platform the contracts are deployed on

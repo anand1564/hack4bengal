@@ -83,7 +83,7 @@ export default function AuthPage() {
       sessionStorage.setItem('token', data.token);
       sessionStorage.setItem('userAddress', formData.publicAddress);
 
-      router.push('/');
+      router.push('/home');
     } catch (error) {
       setApiError(error.message);
       console.error('API Error:', error);

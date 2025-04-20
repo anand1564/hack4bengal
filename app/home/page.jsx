@@ -307,10 +307,10 @@ const EventsPage = () => {
           {/* Display hackathons or a CTA if none */}
           {hackathons.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {hackathons
+              {Array.isArray(hackathons) && hackathons
                 .map(event => (
                   <div 
-                    key={event.eventId} 
+                    key={event._id} 
                     className="bg-white rounded-lg shadow-md overflow-hidden flex hover:shadow-lg transition duration-200"
                   >
                     <div className="w-1/3 bg-gray-200 relative">

@@ -236,7 +236,9 @@ router.post('/register/:id', async (req, res) => {
         address,
         githubLink,
         xLink,
-        linkedinLink
+        linkedinLink,
+        isRegistered: true,
+        isSubmitted: false
       }
       hackathon.teams.push(newTeam);
       hackathon.capacity-=1;
@@ -325,6 +327,28 @@ router.get('/:hackathonId/submissions',async(req,res)=>{
     res.status(200).json({ message: 'Submissions fetched successfully', submissions });
   }catch(err){
     console.error("Error fetching submissions:", err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+})
+router.get('/:hackathonId/teams/:address',async(req,res)=>{
+  const {hackathonId,address} = req.params;
+  try{
+    console.log(address);
+    const hackathon = await Hackathon.findById(hackathonId);
+    if(!hackathon) {
+      return res.status(404).json({ message: 'Hackathon not found' });
+    }
+    const team = hackathon.teams.find(t => t.address.toString() === address);
+    if(!team){
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    if(team.isSubmitted){
+      return res.status(200).json({ isSubmitted: true, isRegistered: true});
+    }else{
+      return res.status(200).json({ isSubmitted: false, isRegistered: true});
+    }
+  }catch(err){
+    console.error("Error fetching team:", err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 })
