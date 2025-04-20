@@ -1,4 +1,6 @@
+"use client"
 import { Calendar, Users, Code } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 const tickets = [
   {
@@ -25,6 +27,7 @@ const tickets = [
 ]
 
 export default function TicketTypes() {
+  const router = useRouter();
   return (
     <section id="tickets" className="py-20 px-6 md:px-12 bg-white">
       <div className="text-center mb-16">
@@ -51,7 +54,7 @@ export default function TicketTypes() {
               <div className="p-6">
                 <h3 className="text-xl text-gray-900 font-bold mb-3">{ticket.title}</h3>
                 <p className="text-gray-700 mb-6">{ticket.description}</p>
-                <button className="w-full bg-indigo-600 text-white py-2 rounded-full hover:bg-purple-700 transition-colors">
+                <button className="w-full bg-indigo-600 text-white py-2 rounded-full hover:bg-purple-700 transition-colors" onClick={(e)=>router.push('/auth')}>
                   View Events
                 </button>
               </div>
